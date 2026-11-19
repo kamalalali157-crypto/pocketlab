@@ -1,0 +1,13 @@
+{
+  "name": "PocketLab – Your Pocket Vibrations Lab",
+  "short_name": "PocketLab",
+  "description": "Turn your phone into a vibrations lab",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "dir": "ltr",
+  "lang": "en",
+  "background_color": "#0b1120",
+  "theme_color": "#0f172a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PocketLab – Your Pocket Vibrations Lab</title>
+  <meta name="description" content="Turn your phone into a vibrations lab: measure, analyse, and generate your lab report.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar no-print">
+  <div class="brand"><span class="logo">〰</span><div><b>PocketLab</b><small>VIBRATIONS LAB</small></div></div>
+  <nav class="steps" id="stepsNav">
+    <button data-step="1" class="active"><i>1</i><span>Experiment</span></button>
+    <button data-step="2"><i>2</i><span>Record</span></button>
+    <button data-step="3"><i>3</i><span>Analyse</span></button>
+    <button data-step="4"><i>4</i><span>Predict &amp; compare</span></button>
+    <button data-step="5"><i>5</i><span>Report</span></button>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= 1. Experiment ================= -->
+  <section class="step active" id="step1">
+    <h2>What do you want to measure today?</h2>
+    <div class="exp-grid" id="expGrid"></div>
+
+    <div class="card" id="expDetails" hidden>
+      <h3 id="expTitle"></h3>
+      <p id="expDesc" class="lead"></p>
+      <div class="two">
+        <div><h4>🧰 Equipment</h4><ul id="expEquip"></ul></div>
+        <div><h4>🔧 Setup</h4><ol id="expSetup"></ol></div>
+      </div>
+      <h4>📐 Measurements (for comparison with theory)</h4>
+      <div id="theoryInputs" class="form-grid"></div>
+      <label class="file-label">📷 Photo of your setup (added to the report)
+        <input type="file" id="setupPhoto" accept="image/*" capture="environment">
+      </label>
+      <img id="photoPreview" class="photo-preview" hidden alt="">
+      <div class="actions"><button class="primary" id="toRecord">Next: Record →</button></div>
+    </div>
+  </section>
+
+  <!-- ================= 2. Record ================= -->
+  <section class="step" id="step2">
+    <h2>Record</h2>
+    <div class="banner" id="predBanner" hidden></div>
+    <div class="tabs" id="modeTabs">
+      <button data-mode="accel">📱 Accelerometer</button>
+      <button data-mode="camera">🎥 Camera</button>
+      <button data-mode="mic">🎤 Sound</button>
+      <button data-mode="demo">🧪 Demo data</button>
+    </div>
+
+    <div class="card mode-panel" data-panel="accel">
+      <p>Attach the phone firmly to the vibrating object. Press <b>Start</b>, displace the object and let it vibrate freely, then press <b>Stop</b>.</p>
+      <p class="hint">⚠️ The phone's mass becomes part of the vibrating mass, so it must be included in your calculations.</p>
+    </div>
+
+    <div class="card mode-panel" data-panel="camera">
+      <p>Stick a brightly colored marker on the object and fix the phone in place (don't hold it). Turn on the camera, then <b>tap the marker in the video</b> to select its color.</p>
+      <div class="video-wrap"><video id="video" playsinline muted></video><canvas id="overlay"></canvas></div>
+      <div class="form-grid">
+        <label>Color tolerance <input type="range" id="tol" min="15" max="140" value="60"></label>
+        <label>Pixels per cm (optional) <input type="number" id="pxPerCm" step="any" placeholder="e.g. 12.5"></label>
+      </div>
+      <p class="hint" id="camInfo">Camera off</p>
+      <button id="camStart">📷 Turn on camera</button>
+    </div>
+
+    <div class="card mode-panel" data-panel="mic">
+      <p>Press <b>Start</b> and wait for "Ready", then strike the object once. Recording starts automatically with the sound and lasts 3 seconds.</p>
+      <div class="meter"><div id="micLevel"></div></div>
+      <p class="hint">Use a quiet room and hold the phone 10–20 cm from the object.</p>
+    </div>
+
+    <div class="card mode-panel" data-panel="demo">
+      <p>Synthetic data to try the site on a computer, or to check that the analysis recovers the correct values.</p>
+      <div class="form-grid">
+        <label>Natural frequency (Hz) <input type="number" id="demoF" value="2.4" step="any"></label>
+        <label>Damping ratio ζ <input type="number" id="demoZ" value="0.03" step="any"></label>
+        <label>Noise level <input type="number" id="demoN" value="0.04" step="any"></label>
+      </div>
+    </div>
+
+    <div class="rec-bar">
+      <button class="primary big" id="recBtn">● Start recording</button>
+      <span id="recStatus" class="status"></span>
+    </div>
+    <canvas id="liveChart" class="chart"></canvas>
+  </section>
+
+  <!-- ================= 3. Analyse ================= -->
+  <section class="step" id="step3">
+    <h2>Analysis</h2>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card"><h3>Signal and fitted model</h3><canvas id="fitChart" class="chart"></canvas></div>
+    <div class="two">
+      <div class="card"><h3>Frequency spectrum (FFT)</h3><canvas id="specChart" class="chart small"></canvas></div>
+      <div class="card"><h3>Amplitude decay: ln(A) vs t</h3><canvas id="decChart" class="chart small"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3>🪞 Digital twin</h3>
+      <p class="hint">Left: your real motion. Right: the model. Change the mass or the damping and watch what happens.</p>
+      <canvas id="twinCanvas" class="twin"></canvas>
+      <div class="form-grid">
+        <label>Mass multiplier <b id="mfVal">×1</b><input type="range" id="mFactor" min="-2" max="2" step="0.05" value="0"></label>
+        <label>Damping multiplier <b id="cfVal">×1</b><input type="range" id="cFactor" min="-3" max="6" step="0.1" value="0"></label>
+      </div>
+      <p id="twinInfo" class="twin-info"></p>
+    </div>
+
+    <div class="card"><h3>🔍 Comparison with theory and error analysis</h3><div id="errorBox"></div></div>
+
+    <div class="actions">
+      <button id="reRecord">↻ Record again</button>
+      <button id="dlCsv">⬇️ Download data (CSV)</button>
+      <button class="primary" id="toPredict">Next: Predict &amp; compare →</button>
+    </div>
+  </section>
+
+  <!-- ================= 4. Predict & compare ================= -->
+  <section class="step" id="step4">
+    <h2>Predict → Test → Compare</h2>
+    <div id="predictBody"></div>
+    <div class="actions"><button class="primary" id="toReport">Next: Report →</button></div>
+  </section>
+
+  <!-- ================= 5. Report ================= -->
+  <section class="step" id="step5">
+    <h2>Lab report</h2>
+    <div class="card no-print" id="reportForm">
+      <div class="form-grid">
+        <label>Title <input id="fTitle"></label>
+        <label>Presented by (one name per line) <textarea id="fBy" rows="2"></textarea></label>
+        <label>Presented to <input id="fTo" placeholder="Dr. ..."></label>
+        <label>Institution name <input id="fInst"></label>
+        <label>Course (optional) <input id="fCourse" placeholder="MECH 310 – Mechanical Vibrations"></label>
+        <label>Date <input id="fDate" type="date"></label>
+      </div>
+      <label>Objective <textarea id="fObj" rows="3"></textarea></label>
+
+      <h4>✍️ Conclusion: you write it, PocketLab guides you</h4>
+      <ul class="guide" id="conclGuide"></ul>
+      <textarea id="fConcl" rows="6" placeholder="Write your conclusion here..."></textarea>
+
+      <div class="actions">
+        <button class="primary" id="buildReport">📄 Generate report</button>
+        <button id="printReport" disabled>🖨️ Print / Save as PDF</button>
+        <button id="dlHtml" disabled>⬇️ Download HTML</button>
+      </div>
+    </div>
+    <div id="reportPreview"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast no-print"></div>
+
+<script src="experiments.js"></script>
+<script src="analysis.js"></script>
+<script src="chart.js"></script>
+<script src="sensors.js"></script>
+<script src="report.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
